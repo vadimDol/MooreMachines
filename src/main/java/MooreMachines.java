@@ -23,7 +23,9 @@ class MooreMachines implements Cloneable{
         this.mState = new ArrayList<String> (original.getState());
         this.moutSignals = new ArrayList<String> (original.getOutputSignals());
     }
-
+    public MooreMachines copy() {
+        return new MooreMachines(this);
+    }
     public ArrayList<ArrayList<String>> getTable() {
         return mTable;
     }

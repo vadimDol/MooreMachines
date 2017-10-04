@@ -1,16 +1,17 @@
 package main.java;
 
-
+import com.mxgraph.layout.*;
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
-import com.mxgraph.layout.mxFastOrganicLayout;
-import com.mxgraph.layout.mxIGraphLayout;
-import com.mxgraph.model.mxGraphModel;
-import com.mxgraph.model.mxIGraphModel;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.util.mxMorphing;
-import com.mxgraph.util.*;
+import com.mxgraph.util.mxCellRenderer;
+import com.mxgraph.util.mxConstants;
+import com.mxgraph.util.mxEvent;
+import com.mxgraph.util.mxEventSource;
+import com.mxgraph.view.mxEdgeStyle;
 import com.mxgraph.view.mxGraph;
-import sun.security.provider.certpath.Vertex;
+import com.mxgraph.view.mxPerimeter;
+import com.mxgraph.view.mxStylesheet;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -18,94 +19,77 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class JGraphX {
-    private  mxGraph graph;
-    private  mxGraphComponent graphComponent;
-    private  Object parent;
-    private  Map<String, Object> vertex;
-    private  JFrame frame;
-    private  String exportFileName;
+    private mxGraph mGraph;
+    private mxGraphComponent mGraphComponent;
+    private Object mParent;
+    private Map<String, Object> mVertex;
 
-    public JGraphX(String fileName, MooreMachines moore)throws IOException {
-        exportFileName = fileName;
-        runVisualization(moore);
+    public JGraphX() {
+        mGraph = new mxGraph();
+        mGraphComponent = new mxGraphComponent(mGraph);
+
+        mParent = mGraph.getDefaultParent();
+        mVertex = new LinkedHashMap<>();
     }
 
-    public  void close() {
-        frame.dispose();
-        graph = new mxGraph();
-        graphComponent = new mxGraphComponent(graph);
-        parent = new Object();
-        vertex = new HashMap<String, Object>();
+    public mxGraph getGraph() {
+        return mGraph;
     }
 
-    private  void runVisualization(MooreMachines moore) throws IOException {
-        frame  = new JFrame();
-        frame.setSize(1366, 900);
-        frame.setLocation(0, 0);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    public mxGraphComponent getGraphComponent() {
+        return mGraphComponent;
+    }
 
-        graph = new mxGraph();
+    public void runVisualization(MooreMachines moore)  {
 
-        graphComponent = new mxGraphComponent(graph);
-        frame.getContentPane().add(graphComponent, BorderLayout.CENTER);
-        frame.setVisible(true);
-        parent = graph.getDefaultParent();
-        vertex = new HashMap<>();
-        graph.getModel().beginUpdate();
-
+        mGraph.getModel().beginUpdate();
         try {
-            initVertices(moore.getOutputSignals(), moore.getState());
-            initArc(moore.getState(), moore.getTable());
+
+            initVertices(moore);
+            initArc(moore);
+            setStyle();
+            setLayout();
 
         } finally {
-            graph.getModel().endUpdate();
-        }
-
-        layoutGraph();
-        //saveAsImage();
-    }
-
-    private void saveAsImage() throws IOException {
-        BufferedImage image = mxCellRenderer.createBufferedImage(graph, null, 1, Color.WHITE, true, null);
-        ImageIO.write(image, "PNG", new File(exportFileName));
-    }
-
-    private void initVertices(ArrayList<String> outputSignals, ArrayList<String> state) {
-        for(int i = 0; i < outputSignals.size(); ++i) {
-            String id = "q" + state.get(i) + "/" + "y" + outputSignals.get(i);
-            Object object =  graph.insertVertex(parent, id, id, 0, 0, 80, 30);
-            vertex.put(state.get(i), object);
+            mGraph.getModel().endUpdate();
         }
     }
 
-    private  void initArc(ArrayList<String> state, ArrayList<ArrayList<String>> table) {
-        for(int index = 0; index < state.size(); index++){
-            Object start = vertex.get(state.get(index));
-            for(int i = 0; i < table.size(); ++i) {
-                ArrayList<String> value = table.get(i);
-                Object end = vertex.get(value.get(index));
-                graph.insertEdge(parent, null, "x" + (i + 1), start, end);
+    private void setLayout() {
+        new mxCircleLayout(mGraph).execute(mGraph.getDefaultParent());
+        new mxParallelEdgeLayout(mGraph).execute(mGraph.getDefaultParent());
+    }
+
+    private void initVertices(MooreMachines moore) {
+        for(int i = 0; i < moore.getOutputSignals().size(); ++i) {
+            String id = "q" + moore.getState().get(i) + "/" + "y" + moore.getOutputSignals().get(i);
+            Object object =  mGraph.insertVertex(mParent, id, id, 0, 0, 80, 30);
+            mVertex.put(moore.getState().get(i), object);
+        }
+    }
+
+    private  void initArc(MooreMachines moore) {
+        for(int index = 0; index < moore.getState().size(); index++){
+            Object start = mVertex.get(moore.getState().get(index));
+            for(int i = 0; i < moore.getTable().size(); ++i) {
+                ArrayList<String> value = moore.getTable().get(i);
+                Object end = mVertex.get(value.get(index));
+                String id = "x" + (i + 1);
+                mGraph.insertEdge(mParent, id, id, start, end);
             }
         }
     }
 
-    private void layoutGraph() {
-        mxHierarchicalLayout layout = new mxHierarchicalLayout(graph);
-        layout.setOrientation(SwingConstants.WEST);
-        layout.setMoveParent(false);
-        layout.setResizeParent(false);
-        layout.setFineTuning(true);
-
-        graph.getModel().beginUpdate();
-        try {
-            layout.execute(graph.getDefaultParent());
-        } finally {
-            graph.getModel().endUpdate();
-        }
+    private void setStyle() {
+        mxStylesheet stylesheet = mGraph.getStylesheet();
+        Map<String, Object> vertexStyle = stylesheet.getDefaultVertexStyle();
+        vertexStyle.put(mxConstants.STYLE_PERIMETER, mxPerimeter.RectanglePerimeter);
+        vertexStyle.put(mxConstants.STYLE_GRADIENTCOLOR, "#ffff");
+        vertexStyle.put(mxConstants.STYLE_PERIMETER_SPACING, 6);
+        vertexStyle.put(mxConstants.STYLE_ROUNDED, true);
+        vertexStyle.put(mxConstants.STYLE_SHADOW, true);
     }
 }

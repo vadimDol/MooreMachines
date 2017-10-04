@@ -1,13 +1,14 @@
 package main.java;
 
+import com.mxgraph.util.mxCellRenderer;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 public class App{
-
-    public static void Draw(MooreMachines moore)  {
-        GraphX graphX1 = new GraphX();
-        graphX1.runVisualization(moore);
-    }
 
     public static void main(String[] args) {
         try {
@@ -16,13 +17,13 @@ public class App{
             Minimization minimization = new Minimization(moore);
             MooreMachines resultMinimization = minimization.getMinimizeMooreMachines();
 
-            Draw(moore);
-            Draw(resultMinimization);
+            Window window1 = new Window();
+            window1.drawMachine(moore);
+            window1.saveAsImage("graph1.png");
 
-
-            //JGraphX graphX2 = new JGraphX("graph2.png");
-            //graphX2.runVisualization(table.getOutputSignals(), table.getState(), table.getDicList());
-
+            Window window2 = new Window();
+            window2.drawMachine(resultMinimization);
+            window2.saveAsImage("graph2.png");
         } catch (Exception ex) {
             System.out.println(ex);
         }
